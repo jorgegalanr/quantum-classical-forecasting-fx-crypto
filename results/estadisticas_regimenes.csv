@@ -1,11 +1,11 @@
 Activo,Régimen,Días,Retorno medio diario (%),Desv. estándar (%),Retorno máximo (%),Retorno mínimo (%)
-EURUSD,Baja volatilidad,1474,-0.0086,0.3676,1.2222,-1.3797
+EURUSD,Baja volatilidad,1474,-0.0082,0.3666,1.2222,-1.3797
 EURUSD,Alta volatilidad,632,0.0133,0.6052,2.7919,-2.7752
-GBPUSD,Baja volatilidad,1474,-0.0072,0.4279,2.0846,-1.4999
+GBPUSD,Baja volatilidad,1474,-0.0069,0.4278,2.0846,-1.4999
 GBPUSD,Alta volatilidad,632,0.0126,0.7567,3.0772,-4.144
-USDJPY,Baja volatilidad,1473,0.0217,0.4127,1.8246,-2.1076
+USDJPY,Baja volatilidad,1474,0.0219,0.4127,1.8246,-2.1076
 USDJPY,Alta volatilidad,632,0.0109,0.7816,2.7049,-3.725
-BTC,Baja volatilidad,2075,0.1017,2.4748,12.9478,-11.396
-BTC,Alta volatilidad,889,0.1402,4.8138,18.7465,-37.1695
-ETH,Baja volatilidad,2075,0.1084,3.402,15.6042,-16.0651
-ETH,Alta volatilidad,889,0.1358,6.1411,25.9475,-42.3472
+BTC,Baja volatilidad,2075,0.1047,2.48,12.9478,-11.396
+BTC,Alta volatilidad,890,0.1408,4.8111,18.7465,-37.1695
+ETH,Baja volatilidad,2075,0.1124,3.4077,15.6042,-16.0651
+ETH,Alta volatilidad,890,0.1364,6.1377,25.9475,-42.3472
