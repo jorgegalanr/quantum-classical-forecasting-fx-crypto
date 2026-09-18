@@ -97,7 +97,7 @@ Los notebooks deben ejecutarse en orden. Los modelos neuronales y, especialmente
 
 ## Instalación
 
-Probado originalmente con Python 3.11 y PyTorch CPU.
+Desarrollado y probado con Python 3.12 y PyTorch CPU.
 
 ```bash
 python -m venv .venv
