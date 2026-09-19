@@ -1,195 +1,153 @@
-# Financial Time Series Forecasting — Classical, Deep Learning & Quantum Models
+# Financial Time Series Forecasting — Classical, Deep Learning & Hybrid QNN
 
-> **TFG · Grado en Computación e Inteligencia Artificial · Universidad Alfonso X el Sabio · 2026**
+Comparación reproducible de modelos para anticipar el retorno diario de tres pares Forex y dos criptomonedas. El proyecto estudia una pregunta deliberadamente exigente: si arquitecturas cada vez más complejas aportan valor fuera de muestra frente a una referencia tan sencilla como predecir retorno cero.
 
-Comparativa de cinco familias de modelos de predicción de series temporales sobre retornos diarios de divisas Forex y criptomonedas, con detección de régimen de volatilidad y análisis segmentado por condiciones de mercado.
+> Proyecto académico del Grado en Computación e Inteligencia Artificial. No constituye asesoramiento financiero ni un sistema de trading.
 
----
+## Pregunta de investigación
 
-## Motivación
+> ¿Mejoran ARIMA, Prophet, una LSTM, una red temporal inspirada en TFT y una QNN híbrida el error de una predicción de retorno cero, y cambia el resultado durante periodos de alta volatilidad?
 
-Los mercados financieros plantean uno de los problemas de forecasting más difíciles: series no estacionarias, alta eficiencia de mercado y comportamiento radicalmente distinto según el régimen de volatilidad. Este proyecto evalúa si los modelos de deep learning y machine learning cuántico ofrecen ventaja real sobre los modelos estadísticos clásicos en este contexto, o si la hipótesis de mercado eficiente limita el techo de cualquier modelo.
+La referencia de retorno cero es imprescindible: en series de retornos próximas a ruido, un modelo complejo puede parecer competitivo frente a otros modelos y aun así no superar una regla trivial.
 
----
+## Activos y datos
 
-## Activos analizados
+| Activo | Mercado | Frecuencia |
+|---|---|---|
+| EUR/USD | Forex | Días de cotización |
+| GBP/USD | Forex | Días de cotización |
+| USD/JPY | Forex | Días de cotización |
+| BTC/USD | Cripto | Diaria |
+| ETH/USD | Cripto | Diaria |
 
-| Activo | Registros | Tipo |
-|--------|-----------|------|
-| EUR/USD | 2.125 días | Forex |
-| GBP/USD | 2.125 días | Forex |
-| USD/JPY | 2.125 días | Forex |
-| BTC/USD | 2.991 días | Cripto |
-| ETH/USD | 2.991 días | Cripto |
+- Fuente: Yahoo Finance mediante `yfinance`.
+- Periodo versionado: enero de 2018 — marzo de 2026.
+- Variable objetivo: variación porcentual diaria calculada con `pct_change()`.
+- La distinta cantidad de observaciones responde a que las criptomonedas cotizan también en fines de semana.
 
-**Fuente:** Yahoo Finance (vía `yfinance`) · **Período:** enero 2018 – marzo 2026
+Los CSV versionados permiten reproducir el análisis sin depender de una nueva descarga. El notebook 01 permite actualizar los datos de origen.
 
-La diferencia entre el número de registros de Forex y cripto (~866 días) corresponde a los fines de semana y festivos bancarios durante el período de estudio: Forex opera de lunes a viernes; las criptomonedas cotizan los 365 días del año.
+## Protocolo temporal
 
----
+La evaluación corregida utiliza las mismas reglas para todos los modelos:
 
-## Pipeline
+1. Se eliminan únicamente las filas iniciales sin retorno o volatilidad de 20 días.
+2. Se reserva cronológicamente el último 20 % de cada activo como test.
+3. El escalador de las redes se ajusta exclusivamente con el 80 % de entrenamiento.
+4. El umbral de alta volatilidad es el percentil 70 calculado solo sobre entrenamiento.
+5. La ventana de las redes contiene 20 retornos anteriores y predice el día siguiente.
+6. Los parámetros se congelan durante test; las ventanas rolling sí incorporan cada retorno real una vez observado.
+7. MAE y RMSE sustituyen a MAPE, que no es adecuada para retornos cercanos a cero o con cambio de signo.
 
-```
-01_data_exploration.ipynb   →  Descarga, limpieza y detección de régimen
-02_arima.ipynb              →  Baseline clásico (ARIMA con selección por AIC)
-03_Prophet.ipynb            →  Modelo aditivo de Meta
-04_lstm.ipynb               →  Red recurrente LSTM (PyTorch)
-05_tft.ipynb                →  Temporal Fusion Transformer (PyTorch)
-06_qnn.ipynb                →  Quantum Neural Network (PennyLane + PyTorch)
-```
+`src/temporal.py` centraliza estas reglas y las pruebas verifican que ni el escalador ni el umbral consulten el periodo de test.
 
----
+## Modelos
 
-## Detección de régimen de volatilidad
+| Modelo | Papel en el experimento |
+|---|---|
+| Retorno cero | Baseline principal |
+| ARIMA | Modelo estadístico con selección `(p,0,q)` por AIC dentro de train |
+| Prophet | Modelo aditivo entrenado únicamente con train |
+| LSTM | Red recurrente de dos capas y ventana de 20 días |
+| Red inspirada en TFT | LSTM encoder, atención temporal y GRN simplificada |
+| QNN híbrida | Compresión clásica, circuito variacional y salida clásica |
 
-Etiquetado no supervisado basado en la volatilidad rolling anualizada de 20 días, con umbral en el percentil 70 de la volatilidad histórica de cada activo:
+La red denominada anteriormente “TFT” es una implementación educativa inspirada en algunos componentes del Temporal Fusion Transformer. No incluye la arquitectura TFT completa —por ejemplo, selección de variables, covariables conocidas y variables estáticas— y por eso se presenta con un nombre más preciso.
 
-| Activo | Umbral vol. anualizada | % tiempo alta vol. |
-|--------|------------------------|-------------------|
-| EUR/USD | ~7,6% | 30% |
-| BTC | ~55,2% | 30% |
-| ETH | ~73,7% | 30% |
+La QNN utiliza:
 
-> El umbral de BTC es aproximadamente 7× mayor que el de EUR/USD, reflejando la diferencia estructural entre mercados regulados maduros y el ecosistema cripto.
+- 6 qubits y 2 capas variacionales;
+- rotaciones `RX`, `RY` y `RZ` y entrelazamiento circular con `CNOT`;
+- medición `PauliZ` de los 6 qubits;
+- 169 parámetros entrenables: 36 cuánticos y 133 clásicos;
+- simulador ideal `default.qubit`, no hardware cuántico real.
 
----
+El objetivo es comparar un modelo híbrido pequeño, no demostrar ventaja cuántica.
 
-## Modelos implementados
+## Resultados y regeneración
 
-### Clásicos
-- **ARIMA** — selección automática de orden (p,d,q) mediante minimización del criterio de Akaike (AIC). Test ADF previo de estacionariedad sobre retornos.
-- **Prophet** — modelo aditivo de Meta con componentes de tendencia, estacionalidad y efectos puntuales.
-
-### Deep Learning
-- **LSTM** — 2 capas apiladas, 64 unidades ocultas, dropout 0,2, ventana deslizante de 20 días (~50.000 parámetros).
-- **TFT** — Temporal Fusion Transformer con LSTM encoder, atención multi-cabeza (4 heads) y Gated Residual Networks (~80.000 parámetros).
-
-### Cuántico / Híbrido
-- **QNN** — Circuito cuántico variacional con 6 qubits, 2 capas variacionales (rotaciones RX/RY/RZ + CNOT en topología circular), encoding RY y medida Pauli-Z sobre el primer qubit. Integración PennyLane + PyTorch (<100 parámetros).
-
----
-
-## Resultados — MAE global por modelo y activo
-
-| Activo | ARIMA | Prophet | LSTM | TFT | QNN | **Mejor** |
-|--------|-------|---------|------|-----|-----|-----------|
-| EUR/USD | 0,003498 | 0,003505 | 0,003478 | **0,003451** | 0,003528 | TFT |
-| GBP/USD | 0,003611 | 0,003611 | 0,003576 | **0,003555** | 0,003659 | TFT |
-| USD/JPY | **0,004947** | 0,004954 | 0,005065 | 0,005004 | 0,004976 | ARIMA |
-| BTC | 0,017434 | 0,017453 | **0,017241** | 0,017321 | 0,017890 | LSTM |
-| ETH | 0,026968 | 0,027030 | **0,026938** | 0,026956 | 0,028034 | LSTM |
-
-### MAE en régimen de alta volatilidad
-
-| Activo | ARIMA | Prophet | LSTM | TFT | QNN | **Mejor** |
-|--------|-------|---------|------|-----|-----|-----------|
-| EUR/USD | 0,004317 | 0,004324 | **0,004142** | 0,004162 | 0,004246 | LSTM |
-| GBP/USD | 0,004707 | 0,004705 | 0,004381 | **0,004352** | 0,004445 | TFT |
-| USD/JPY | **0,005722** | 0,005740 | 0,006040 | 0,005913 | 0,005827 | ARIMA |
-| BTC | 0,029341 | 0,029372 | **0,027258** | 0,027899 | 0,027809 | LSTM |
-| ETH | 0,034948 | 0,035288 | **0,033984** | 0,035446 | 0,036527 | LSTM |
-
----
-
-## Conclusiones principales
-
-**1. No existe un modelo universalmente superior**
-El mejor modelo depende tanto del activo como del régimen de mercado. Resultado consistente con el *no free lunch theorem* y con la experiencia acumulada en competiciones de forecasting (M5, M6).
-
-**2. Eficiencia del mercado Forex**
-ARIMA encuentra orden óptimo (0,0,0) en los tres pares de divisas, lo que equivale a predecir la media histórica (cero para retornos centrados). Este resultado es una manifestación empírica directa de la hipótesis de mercado eficiente en forma débil: los retornos diarios son estadísticamente indistinguibles del ruido blanco. Las diferencias entre modelos quedan relegadas al quinto decimal.
-
-**3. TFT se impone en Forex de baja volatilidad; ARIMA resiste en USD/JPY**
-El mecanismo de atención temporal del TFT detecta pequeñas señales sutiles en EUR/USD y GBP/USD. En USD/JPY, el cambio estructural de régimen a partir de 2022 favorece la simplicidad de ARIMA frente a modelos más complejos.
-
-**4. LSTM lidera en criptomonedas**
-En BTC y ETH, la LSTM supera tanto a los modelos clásicos como al TFT, especialmente en régimen de alta volatilidad en BTC (+7% de mejora sobre ARIMA). La no-linealidad pronunciada del mercado cripto es donde el deep learning aporta valor real. El TFT muestra cierta propensión al sobreajuste en series univariantes cortas.
-
-**5. QNN — paridad con muchos menos parámetros**
-La QNN no gana en ningún activo, pero se mantiene dentro del 3-4% del mejor modelo operando con menos de 100 parámetros entrenables frente a los ~80.000 de LSTM o TFT. El resultado sugiere una posible eficiencia estructural, aunque con tres limitaciones relevantes: mayor coste computacional (10-20 min por cada 10 epochs de cada activo vs 2-5 min para LSTM), dependencia de simulador ideal (sin ruido de hardware NISQ real) y menor expresividad efectiva con 6 qubits.
-
-**6. Diferencia estructural Forex vs Cripto**
-El MAE de cripto es 5-8× superior al de Forex (BTC ≈ 0,0174 vs EUR/USD ≈ 0,0035), reflejo directo de la diferencia de volatilidad entre ambos mercados.
-
-**7. Degradación universal en alta volatilidad**
-Todos los modelos deterioran su rendimiento en el régimen de alta volatilidad, con incrementos de MAE que oscilan entre el 25% y el 80% según el activo. Ningún modelo es inmune a los shocks de mercado.
-
----
-
-## Stack tecnológico
-
-```
-Python 3
-PyTorch 2.x
-PennyLane 0.44.1
-Prophet (Meta)
-statsmodels       → ARIMA
-scikit-learn      → preprocesamiento y métricas
-yfinance          → descarga de datos
-pandas · numpy · matplotlib
-```
-
----
-
-## Estructura del repositorio
-
-```
-├── data/                                      # Datos procesados (generados por notebook 01)
-│   ├── eurusd_raw.csv
-│   ├── eurusd_processed.csv
-│   └── (...) resto de activos
-├── notebooks/
-│   ├── 01_data_exploration.ipynb              # Descarga, limpieza, regímenes
-│   ├── 02_arima.ipynb
-│   ├── 03_Prophet.ipynb
-│   ├── 04_lstm.ipynb
-│   ├── 05_tft.ipynb                           # Implementación PyTorch desde cero
-│   └── 06_qnn.ipynb                           # PennyLane + PyTorch
-├── results/
-│   ├── 01_series_historicas.png
-│   ├── 02_retornos_volatilidad.png
-│   ├── 03_regimenes_volatilidad.png
-│   ├── 04_comparativa_arima_prophet.png
-│   ├── 05_comparativa_clasicos_lstm.png
-│   ├── 06_comparativa_todos_modelos.png
-│   ├── 07_comparativa_final_todos_modelos.png
-│   ├── arima_resultados.csv
-│   ├── prophet_resultados.csv
-│   ├── lstm_resultados.csv
-│   ├── tft_resultados.csv
-│   ├── qnn_resultados.csv
-│   └── comparativa_final_todos_modelos.csv
-└── README.md
-```
-
----
-
-## Cómo ejecutar
+El baseline corregido puede regenerarse rápidamente:
 
 ```bash
-# Clonar el repositorio
-git clone https://github.com/jorgegalanr/quantum-classical-forecasting-fx-crypto
-cd quantum-classical-forecasting-fx-crypto
-
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Ejecutar los notebooks en orden
-jupyter notebook
+python run_baseline.py
 ```
 
-> Los notebooks deben ejecutarse en orden secuencial. El notebook 01 genera los CSV procesados en `data/` que consumen los notebooks 02 a 06. El notebook 06 (QNN) es el más costoso computacionalmente: aproximadamente 10-20 minutos cada 10 epochs por activo al ejecutarse sobre simulador.
+| Activo | MAE retorno cero | RMSE retorno cero |
+|---|---:|---:|
+| EUR/USD | 0,003498 | 0,004751 |
+| GBP/USD | 0,003603 | 0,004639 |
+| USD/JPY | 0,004869 | 0,006302 |
+| BTC | 0,017193 | 0,024301 |
+| ETH | 0,026714 | 0,038019 |
 
----
+Las métricas comparativas anteriores se generaron con un escalador ajustado antes de separar train y test. Los notebooks 02–06 ya contienen el protocolo corregido, por lo que esos experimentos deben ejecutarse de nuevo antes de publicar una tabla definitiva de modelos. Esta decisión evita conservar resultados que ya no corresponden al código actual.
 
-## Reproducibilidad
+## Notebooks
 
-Todos los experimentos se ejecutan con semillas fijadas (`torch.manual_seed(42)`, `np.random.seed(42)`) para garantizar la reproducibilidad de los resultados entre ejecuciones en la misma máquina.
+```text
+01_data_exploration.ipynb  Descarga, retornos, volatilidad y análisis descriptivo
+02_arima.ipynb             ARIMA rolling y baseline de retorno cero
+03_Prophet.ipynb           Prophet
+04_lstm.ipynb              LSTM
+05_tft.ipynb               Red temporal inspirada en TFT
+06_qnn.ipynb               QNN híbrida y comparación final
+```
 
----
+Los notebooks deben ejecutarse en orden. Los modelos neuronales y, especialmente, la QNN pueden requerir bastante tiempo en CPU.
+
+## Instalación
+
+Desarrollado y probado con Python 3.12 y PyTorch CPU.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Linux/macOS
+# .\.venv\Scripts\Activate.ps1   # Windows PowerShell
+
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m jupyter notebook
+```
+
+## Pruebas rápidas
+
+Las pruebas de prevención de fuga no requieren instalar PyTorch, Prophet o PennyLane:
+
+```bash
+python -m pip install -r requirements-test.txt
+python -m pytest -q
+python run_baseline.py
+```
+
+GitHub Actions valida las funciones temporales, la sintaxis de los notebooks y la compilación de los módulos en cada Pull Request.
+
+## Limitaciones
+
+- Una única división 80/20 no cuantifica la variabilidad entre diferentes periodos de mercado.
+- Las redes se entrenan con una sola semilla y sin búsqueda sistemática de hiperparámetros.
+- No se incluyen costes de transacción, *slippage* ni una regla de trading; menor MAE no equivale a rentabilidad.
+- El régimen es una segmentación descriptiva basada en volatilidad, no un estado de mercado observable con certeza anticipada.
+- La red inspirada en TFT no es una reproducción completa de la arquitectura original.
+- La QNN se ejecuta en simulador ideal y no demuestra ventaja cuántica.
+- Diferencias pequeñas de MAE no permiten afirmar superioridad sin validación temporal repetida e intervalos de incertidumbre.
+
+## Estructura
+
+```text
+.
+├── data/                    Datos descargados y procesados
+├── notebooks/               Experimentos secuenciales
+├── results/                 Métricas y figuras generadas
+├── src/temporal.py          Split, escalado y regímenes sin fuga
+├── tests/                   Controles metodológicos
+├── run_baseline.py          Baseline reproducible
+└── requirements*.txt        Dependencias completas y de pruebas
+```
 
 ## Autor
 
-**Jorge Galán Rodríguez**
-[LinkedIn](https://linkedin.com/in/jorgegalanrodriguez) · [GitHub](https://github.com/jorgegalanr)
+Jorge Galán Rodríguez — [GitHub](https://github.com/jorgegalanr) · [LinkedIn](https://linkedin.com/in/jorgegalanrodriguez)
+
+## Licencia
+
+MIT.
